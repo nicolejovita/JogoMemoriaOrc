@@ -78,7 +78,7 @@
 
     /* CARD DESIGN & FLIP ANIMATION */
     .card {
-      aspect-ratio: 3 / 4;
+      aspect-ratio: 1 / 1;
       position: relative;
       transform-style: preserve-3d;
       transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -96,6 +96,9 @@
     .card.matched {
       transform: rotateY(180deg);
       cursor: default;
+    }
+
+    .card.matched .card-face {
       opacity: 0.85;
     }
 
