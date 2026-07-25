@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jogo da Memória</title>
+  <style>
+    /* RESET E ESTILOS GERAIS */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #003D0D;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+      color: #FFFBDC;
+    }
+
+    header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.1rem;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+
+    /* TABULEIRO / GRID DE CARTAS */
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 12px;
+      max-width: 1000px;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.15);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+      perspective: 1000px;
+    }
+
+    /* RESPONSIVIDADE */
+    @media (max-width: 850px) {
+      .game-board {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .game-board {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        padding: 10px;
+      }
+    }
+
+    /* CARD DESIGN & FLIP ANIMATION */
+    .card {
+      aspect-ratio: 3 / 4;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+    }
+
+    .card:active {
+      transform: scale(0.97);
+    }
+
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .card.matched {
+      transform: rotateY(180deg);
+      cursor: default;
+      opacity: 0.85;
+    }
+
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: #FFFBDC;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      overflow: hidden;
+    }
+
+    /* AJUSTE PARA AS IMAGENS FICAREM MAIORES E NÍTIDAS */
+    .card-face img {
+      width: 90%;
+      height: 90%;
+      object-fit: contain;
+      image-rendering: pixelated; /* Mantém sprites em alta definição */
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .card-back {
+      transform: rotateY(0deg);
+    }
+
+    .card-front {
+      transform: rotateY(180deg);
+    }
+
+    /* MODAL DE VITÓRIA */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal-content {
+      background: #FFFBDC;
+      color: #003D0D;
+      padding: 30px 40px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-content h2 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .modal-content p {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+
+    .btn-reset {
+      background-color: #003D0D;
+      color: #FFFBDC;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .btn-reset:hover {
+      background-color: #005c14;
+    }
+
+    .btn-reset:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Jogo da Memória</h1>
+    <div class="stats">
+      <span>Pares Encontrados: <strong id="matches-count">0</strong> / 24</span>
+      <span>Jogadas: <strong id="moves-count">0</strong></span>
+    </div>
+  </header>
+
+  <main class="game-board" id="board"></main>
+
+  <div class="modal-overlay" id="victory-modal">
+    <div class="modal-content">
+      <h2>Parabéns! 🎉</h2>
+      <p>Você encontrou todos os 24 pares!</p>
+      <button class="btn-reset" onclick="initGame()">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <script>
+    // LISTA DAS 24 IMAGENS DO JOGO
+    const images = [
+      'birthday.png',
+      'Chibi Arthur (Gama Sul).png',
+      'Chibi Bryan.png',
+      'Chibi Guilherme .png',
+      'Chibi Vinícius.png',
+      'clap.png',
+      'coelho.png',
+      'corpofrente2.png',
+      'final.png',
+      'hearts.png',
+      'orc_professor.png',
+      "Orcinhofutebol.png",
+      "Orcinho DiBis.png",
+      "Orcinho DiProj.png",
+      'orcdicom.png',
+      'OrcEstudante.png',
+      'ORCLGBT.png',
+      'ORCMAROMBAA.png',
+      'orctops.png',
+      'pato.png',
+      'pillow.png',
+      'piscada.png',
+      'r.png',
+      'yeah.png'
+    ];
+
+    // CAMINHO DA PASTA E VERSO DAS CARTAS
+    const folderPath = 'Imagens/Jogo da memória/';
+    const backImagePath = folderPath + 'capacete.svg';
+
+    const board = document.getElementById('board');
+    const matchesCountEl = document.getElementById('matches-count');
+    const movesCountEl = document.getElementById('moves-count');
+    const victoryModal = document.getElementById('victory-modal');
+
+    let flippedCards = [];
+    let lockBoard = false;
+    let matchesFound = 0;
+    let moves = 0;
+
+    // Função para tratar caminhos de arquivos mantendo as barras corretas
+    function formatPath(path) {
+      return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    }
+
+    function initGame() {
+      board.innerHTML = '';
+      flippedCards = [];
+      lockBoard = false;
+      matchesFound = 0;
+      moves = 0;
+      matchesCountEl.textContent = matchesFound;
+      movesCountEl.textContent = moves;
+      victoryModal.classList.remove('active');
+
+      const deck = [...images, ...images];
+      shuffle(deck);
+
+      deck.forEach((imgName) => {
+        const card = createCardElement(imgName);
+        board.appendChild(card);
+      });
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function createCardElement(imgName) {
+      const card = document.createElement('div');
+      card.classList.add('card');
+      card.dataset.name = imgName;
+
+      const frontSrc = formatPath(folderPath + imgName);
+      const backSrc = formatPath(backImagePath);
+
+      // Criação via elementos do DOM para evitar problemas de escape com aspas simples em innerHTML
+      const backFace = document.createElement('div');
+      backFace.className = 'card-face card-back';
+      const backImg = document.createElement('img');
+      backImg.src = backSrc;
+      backImg.alt = 'Verso';
+      backFace.appendChild(backImg);
+
+      const frontFace = document.createElement('div');
+      frontFace.className = 'card-face card-front';
+      const frontImg = document.createElement('img');
+      frontImg.src = frontSrc;
+      frontImg.alt = imgName;
+      frontFace.appendChild(frontImg);
+
+      card.appendChild(backFace);
+      card.appendChild(frontFace);
+
+      card.addEventListener('click', () => flipCard(card));
+      return card;
+    }
+
+    function flipCard(card) {
+      if (lockBoard) return;
+      if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+      card.classList.add('flipped');
+      flippedCards.push(card);
+
+      if (flippedCards.length === 2) {
+        moves++;
+        movesCountEl.textContent = moves;
+        checkMatch();
+      }
+    }
+
+    function checkMatch() {
+      const [card1, card2] = flippedCards;
+      const isMatch = card1.dataset.name === card2.dataset.name;
+
+      if (isMatch) {
+        disableCards();
+      } else {
+        unflipCards();
+      }
+    }
+
+    function disableCards() {
+      const [card1, card2] = flippedCards;
+      card1.classList.add('matched');
+      card2.classList.add('matched');
+
+      matchesFound++;
+      matchesCountEl.textContent = matchesFound;
+      flippedCards = [];
+
+      if (matchesFound === images.length) {
+        setTimeout(() => {
+          victoryModal.classList.add('active');
+        }, 500);
+      }
+    }
+
+    function unflipCards() {
+      lockBoard = true;
+      setTimeout(() => {
+        flippedCards[0].classList.remove('flipped');
+        flippedCards[1].classList.remove('flipped');
+        flippedCards = [];
+        lockBoard = false;
+      }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
